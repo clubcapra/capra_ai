@@ -40,5 +40,5 @@ class AIBase(object):
         return self.client.get_state()
 
     def estop_listener(self, status):
-        self.running = status
+        self.running = not status
                 
