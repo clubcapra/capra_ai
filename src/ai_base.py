@@ -3,23 +3,33 @@
 import roslib; roslib.load_manifest('capra_ai')
 import rospy
 import actionlib
+import csv
 from sensors.Gps import Gps
 from move_base_msgs.msg import MoveBaseGoal, MoveBaseAction
 from capra_msgs.msg import AiStatus, EStopStatus
-from sensor_msgs.msg import NavSatFix
+from nav_msgs.msg import Odometry
 
 class AIBase(object):
     running = True
     
-    def __init__(self, node_name):
+    def __init__(self, node_name, gps_goals_file):
         rospy.init_node(node_name)
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+        self.waypoints = []
+        f = open(gps_goals_file, 'rt')
+
+        try:
+            reader = csv.reader(f)
+            for waypoint in reader:
+                self.waypoints.append(waypoint)
+        finally:
+            f.close()
         
     def run(self):
         #self.client.wait_for_server()
         self._create_status_broadcaster()
         rospy.Subscriber("/capra_smartmotor/estop", EStopStatus, self._estop_subscriber)
-        rospy.Subscriber("/capra_gps", NavSatFix, self._gps_subscriber)
+        rospy.Subscriber("/enu", Odometry, self._gps_subscriber)
 
     def _create_status_broadcaster(self):
         self.status_publisher = rospy.Publisher('~status', AiStatus)
@@ -34,7 +44,7 @@ class AIBase(object):
         self.estop_listener(data.stopped)
 
     def _gps_subscriber(self, data):
-        self.gps_listener(data.lat, data.lon)
+        self.gps_listener(data.pose.pose.position.x, data.pose.pose.position.y)
 
     def send_goal(self, goal, wait=False):
         self.client.send_goal(goal)
@@ -48,6 +58,6 @@ class AIBase(object):
     def estop_listener(self, status):
         self.running = not status
 
-    def gps_listener(self, latitude, longitude):
-        self.Gps = Gps(latitude, longitude)
+    def gps_listener(self, x, y):
+        self.Gps = Gps(x, y)
                 
