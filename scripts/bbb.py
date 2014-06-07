@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import roslib; roslib.load_manifest('capra_lidar_localization')
+import roslib; roslib.load_manifest('capra_ai')
 import rospy
 import csv
 from nav_msgs.msg import Odometry

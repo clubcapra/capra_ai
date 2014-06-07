@@ -12,19 +12,22 @@ from nav_msgs.msg import Odometry
 class AIBase(object):
     running = True
     
-    def __init__(self, node_name, gps_goals_file):
+    def __init__(self, node_name, gps_goals_file=None):
         rospy.init_node(node_name)
         self.client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
-        self.waypoints = []
-        f = open(gps_goals_file, 'rt')
-
-        try:
-            reader = csv.reader(f)
-            for waypoint in reader:
-                self.waypoints.append(waypoint)
-        finally:
-            f.close()
+        self._load_waypoints(gps_goals_file)
         
+    def _load_waypoints(self, file):
+        self.waypoints = []
+        if file:
+            f = open(file, 'rt')
+            try:
+                reader = csv.reader(f)
+                for waypoint in reader:
+                    self.waypoints.append(waypoint)
+            finally:
+                f.close()
+
     def run(self):
         #self.client.wait_for_server()
         self._create_status_broadcaster()
