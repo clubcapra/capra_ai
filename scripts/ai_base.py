@@ -29,7 +29,7 @@ class AIBase(object):
                 f.close()
 
     def run(self):
-        #self.client.wait_for_server()
+        self.client.wait_for_server()
         self._create_status_broadcaster()
         rospy.Subscriber("/capra_smartmotor/estop", EStopStatus, self._estop_subscriber)
         rospy.Subscriber("/enu", Odometry, self._gps_subscriber)
@@ -51,7 +51,6 @@ class AIBase(object):
 
     def send_goal(self, goal, wait=False):
         self.client.send_goal(goal)
-        
         if wait:
             self.client.wait_for_result()
 

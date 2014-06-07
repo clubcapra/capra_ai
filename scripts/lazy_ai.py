@@ -16,8 +16,10 @@ class LazyAI(AIBase):
         goal.target_pose.header.frame_id = "base_link"
         goal.target_pose.header.stamp = rospy.Time.now()
         
-        goal.target_pose.pose.position.x = 1
+        goal.target_pose.pose.position.x = 1.0
+        goal.target_pose.pose.orientation.w = 1.0
 
+        print "zxxx"        
         self.send_goal(goal, True)                
         print self.get_state()  
         
