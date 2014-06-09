@@ -1,3 +1,0 @@
-<launch>
-    <node name="ai" pkg="capra_ai" type="lazy_ai.py" output="screen"/>
-</launch>
