@@ -12,6 +12,7 @@ from shapely.geometry import Polygon
 from shapely import affinity
 import cv2
 from multiprocessing import Pool, cpu_count, Value
+import random
 
 theta = 0
 map = None
@@ -19,6 +20,9 @@ map_size = 201
 square_size = 100
 max_dist = map_size / 2
 angle_found = None
+
+DEFAULT_PRIORITY_ANGLES = [-20, -10, -30, -40, -50, 0, 10, 20, 30, -60, 40, 50, -70, 60, 70, -80, 80, -90, 90]
+angle = -20
 
 def rf_callback(data):
     global map
@@ -35,7 +39,7 @@ def rf_callback(data):
                     y = ranges[i] * 100
                 else:
                     s = o/abs(o)
-                    angle = (90-abs(o)) * s * math.pi / 180
+                    angle = math.radians((90-abs(o)) * s)
                     x = round(ranges[i] * math.cos(angle) * s * 100)
                     y = round(ranges[i] * math.sin(angle) * s * 100)
 
@@ -81,12 +85,15 @@ def init_proc(args):
 def check_angle(args):
     global angle_found
     if angle_found.value == 1:
-        return None
-    map = args[0]
-    rect = args[1]
-    angle = args[2]
+        return -1
+    angle = args[0]
+    map = args[1]
+    rect = args[2]
 
-    s = affinity.rotate(rect, -angle, origin=(int(map_size/2), map_size - 1))
+    if angle % 10 != 0:
+        print "bbb"
+
+    s = affinity.rotate(rect, -(angle+90), origin=(int(map_size/2), map_size - 1))
     polygon = [(int(math.ceil(i)), int(math.ceil(j))) for i,j in list(s.exterior.coords)]
 
     mask = get_mask(polygon)
@@ -96,9 +103,9 @@ def check_angle(args):
         angle_found.value = 1
         return angle
     else:
-        return None
+        return -1
 
-def find_safe_angle(map):
+def find_safe_angle(map, priority):
     global map_size
     global square_size
     global angle_found
@@ -110,11 +117,12 @@ def find_safe_angle(map):
 
     tasks = list()
 
-    for angle in range(0, 181, 10):
-        tasks.append((map, rect, angle))
+    for angle in priority:
+        tasks.append((angle, map, rect))
 
     angles = pool.map(check_angle, tasks)
-    angles = sorted([a for a in angles if a])
+    b = angles[:]
+    angles = sorted([a for a in angles if a != -1])
     angle_found.value = 0
 
     if len(angles) > 0:
@@ -131,7 +139,14 @@ pool = Pool(processes = cpu_count()/2, initializer = init_proc, initargs = (angl
 
 while not rospy.is_shutdown():
     if map is not None:
-        print find_safe_angle(map)
+        priority = DEFAULT_PRIORITY_ANGLES[:]
+        priority.remove(angle)
+        priority.insert(random.randint(0, 4), angle) #Ajout du dernier angle quelque part en haut de la liste
+        angle = find_safe_angle(map, priority)
+        #print angle
+        rad = math.radians(angle)
+        print rad
+
     time.sleep(0.06)
 
 rospy.spin()
