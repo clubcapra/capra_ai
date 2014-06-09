@@ -17,14 +17,16 @@ import tf
 
 theta = 0
 map = None
-map_size = 201
-square_size = 100
+map_size = 261
+square_size = 130
 max_dist = map_size / 2
 angle_found = None
 gps_angle = None
+last_gps_pose = None
 
-SPEED = 1.5
-DEFAULT_PRIORITY_ANGLES = [-20, -10, -30, -40, -50, 0, 10, 20, 30, -60, 40, 50, -70, 60, 70, -80, 80, -90, 90]
+SPEED = 0.8
+#DEFAULT_PRIORITY_ANGLES = [-20, -10, -30, -40, -50, 0, 10, 20, 30, -60, 40, 50, -70, 60, 70, -80, 80, -90, 90]
+DEFAULT_PRIORITY_ANGLES = [0, -10, -20, 10, 20, -30, -40, 30, 40, -50, 0, -60, 50, -70, 60, 70, -80, 80, -90, 90]
 angle = -20
 
 
@@ -130,9 +132,14 @@ def find_safe_angle(map, priority):
         return 0
 
 def gps_callback(data):
+    print data
     global gps_angle
-    r, p, y = tf.transformations.euler_from_quaternion(data.orientation)
-    gps_angle = y
+    global last_gps_pose
+    q = data.orientation
+    r, p, y = tf.transformations.euler_from_quaternion((q.x, q.y, q.z, q.w))
+    gps_angle = math.degrees(y)
+    print gps_angle
+    last_gps_pose = time.time()
 
 rospy.init_node('yolo_ai')
 rospy.Subscriber("/base_scan", LaserScan, rf_callback)
@@ -162,7 +169,12 @@ while not rospy.is_shutdown():
 
         twist = Twist()
         twist.linear.x = linear
-        twist.angular.z = angular
+        twist.angular.z = -angular
+        
+        if last_gps_pose:
+            if time.time() - last_gps_pose > 0.2:
+                twist.linear.x = 0
+        
         cmd_vel.publish(twist)
 
     time.sleep(0.06)  # Because why not
