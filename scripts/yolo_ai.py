@@ -135,9 +135,9 @@ def gps_callback(data):
     gps_angle = y
 
 rospy.init_node('yolo_ai')
-rospy.Subscriber("/scan", LaserScan, rf_callback)
+rospy.Subscriber("/base_scan", LaserScan, rf_callback)
 rospy.Subscriber("/gps/next_waypoint", Pose, gps_callback)
-cmd_vel = rospy.Publisher('/smartmotor/cmd_vel2', Twist)
+cmd_vel = rospy.Publisher('/smartmotor/cmd_vel', Twist)
 
 angle_found = Value('i', 0)
 pool = Pool(processes=cpu_count()/2, initializer=init_proc, initargs=(angle_found, ))
