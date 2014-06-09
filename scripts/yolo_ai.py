@@ -13,6 +13,7 @@ from shapely import affinity
 import cv2
 from multiprocessing import Pool, cpu_count, Value
 import random
+import tf
 
 theta = 0
 map = None
@@ -20,7 +21,9 @@ map_size = 201
 square_size = 100
 max_dist = map_size / 2
 angle_found = None
+gps_angle = None
 
+SPEED = 1.5
 DEFAULT_PRIORITY_ANGLES = [-20, -10, -30, -40, -50, 0, 10, 20, 30, -60, 40, 50, -70, 60, 70, -80, 80, -90, 90]
 angle = -20
 
@@ -90,9 +93,6 @@ def check_angle(args):
     map = args[1]
     rect = args[2]
 
-    if angle % 10 != 0:
-        print "bbb"
-
     s = affinity.rotate(rect, -(angle+90), origin=(int(map_size/2), map_size - 1))
     polygon = [(int(math.ceil(i)), int(math.ceil(j))) for i,j in list(s.exterior.coords)]
 
@@ -117,6 +117,7 @@ def find_safe_angle(map, priority):
 
     tasks = list()
 
+    # Multiprocessing parce que c'est vraiment pas optimise(<- accent aigu ici)
     for angle in priority:
         tasks.append((angle, map, rect))
 
@@ -130,9 +131,14 @@ def find_safe_angle(map, priority):
     else:
         return 0
 
+def gps_callback(data):
+    r, p, y = tf.transformations.euler_from_quaternion(data.orientation)
+    gps_angle = y
+
 rospy.init_node('yolo_ai')
 rospy.Subscriber("/scan", LaserScan, rf_callback)
-rospy.Subscriber("/robot_pose_ekf/odom", PoseWithCovarianceStamped)
+rospy.Subscriber("/gps/next_waypoint", Pose, gps_callback)
+cmd_vel = rospy.Publisher('/smartmotor/cmd_vel2', Twist)
 
 angle_found = Value('i', 0)
 pool = Pool(processes = cpu_count()/2, initializer = init_proc, initargs = (angle_found, ))
@@ -141,12 +147,25 @@ while not rospy.is_shutdown():
     if map is not None:
         priority = DEFAULT_PRIORITY_ANGLES[:]
         priority.remove(angle)
-        priority.insert(random.randint(0, 4), angle) #Ajout du dernier angle quelque part en haut de la liste
-        angle = find_safe_angle(map, priority)
-        #print angle
-        rad = math.radians(angle)
-        print rad
 
-    time.sleep(0.06)
+        priority.insert(random.randint(0, 4), angle) #Ajout du dernier angle quelque part en haut de la liste
+        if gps_angle:
+            if gps_angle >= -90 and gps_angle < 90:
+                priority.insert(0, gps_angle)
+
+        angle = find_safe_angle(map, priority)
+        rad = math.radians(angle)
+
+        angular = rad
+        linear = 0
+        if abs(angle) < 45:
+            linear = math.cos(angular) * SPEED
+
+        twist = Twist()
+        twist.linear.x = linear
+        twist.angular.z = angular
+        cmd_vel.publish(twist)
+
+    time.sleep(0.06) # Because why not
 
 rospy.spin()
