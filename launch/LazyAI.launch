@@ -1,0 +1,7 @@
+<launch>
+    <arg name="speed" default="0.5" />
+
+    <node name="ai" pkg="capra_ai" type="lazy_ai.py" output="screen">
+        <param name="speed" value="$(arg speed)" />
+    </node>
+</launch>
