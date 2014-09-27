@@ -102,18 +102,21 @@ while not rospy.is_shutdown():
             disp_x = int((displacement_check * math.cos(angle))/map_resolution)
             disp_y = int((displacement_check * math.sin(angle))/map_resolution)
             cost = calculate_sum(m, robot_area, (disp_x, disp_y))
-            if cost == 0:
+            if cost <= 1.0:
                 break
+#####
+        print cost
+        m2 = m.copy()
+        for p in robot_area:
+            m2[p[0] + disp_x][p[1]+disp_y] = 1
+        
+        m2[size/2][size/2]=0; m2[size/2 + 1][size/2]=0; m2[size/2 - 1][size/2]=0; m2[size/2][size/2 + 1]=0; m2[size/2][size/2 - 1]=0;
+        show_matrix(m2, "aaa")
+#####
 
-        #m2 = m.copy()
-        #for p in robot_area:
-        #    m2[p[0] + disp_x][p[1]+disp_y] = 1
-        #
-        #m2[size/2][size/2]=0; m2[size/2 + 1][size/2]=0; m2[size/2 - 1][size/2]=0; m2[size/2][size/2 + 1]=0; m2[size/2][size/2 - 1]=0;
-        #show_matrix(m2, "aaa")
-
+        print speed
         vel = Twist()
-        if cost == 0:
+        if cost <= 1:
              vel.linear.x = speed * math.cos(angle)
              vel.angular.z = speed * math.sin(angle)
         else:
